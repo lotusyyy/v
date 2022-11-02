@@ -83,6 +83,8 @@ int main(void) {
 	// to use the malloc() function to allocate memory for it!
 	struct todo_list *todo;
 
+	printf("Welcome to CS ToDo!\n");
+
 	todo = malloc(sizeof(struct todo_list));
 	todo->tasks = NULL;
 	todo->completed_tasks = NULL;
