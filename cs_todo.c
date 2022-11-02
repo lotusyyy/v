@@ -149,21 +149,21 @@ void command_loop(struct todo_list *todo) {
 // You should add any helper functions you create here
 void add_task(struct todo_list *todo, char task_name[MAX_TASK_LENGTH],
         char task_category[MAX_CATEGORY_LENGTH], enum priority prio) {
-    struct task *t = malloc(sizeof(struct task));
-    strcpy(t->task_name, task_name);
-    strcpy(t->category, task_category);
-    t->priority = prio;
-    t->next = NULL;
+    struct task *new_node = malloc(sizeof(struct task));
+    strcpy(new_node->task_name, task_name);
+    strcpy(new_node->category, task_category);
+    new_node->priority = prio;
+    new_node->next = NULL;
 
     if (todo->tasks == NULL) {
-        todo->tasks = t;
+        todo->tasks = new_node;
     } else {
         struct task *pre = todo->tasks;
         while (pre->next) {
             pre = pre->next;
         }
 
-        pre->next = t;
+        pre->next = new_node;
     }
 
     /*
