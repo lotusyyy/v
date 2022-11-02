@@ -91,7 +91,7 @@ int main(void) {
 
 	command_loop(todo);
 
-	printf("All done!");
+	printf("All done!\n");
 	return 0;
 }
 
