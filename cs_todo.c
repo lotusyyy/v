@@ -454,12 +454,16 @@ void trim_whitespace(char input[MAX_STRING_LENGTH]) {
     remove_newline(input);
 
     int lower;
-    for (lower = 0; input[lower] == ' '; ++lower)
-        ;
+    lower = 0;
+    while (input[lower] == ' ') {
+        ++lower;
+    }
 
     int upper;
-    for (upper = strlen(input) - 1; input[upper] == ' '; --upper)
-        ;
+    upper = strlen(input) - 1;
+    while (input[upper] == ' ') {
+        --upper;
+    }
 
     for (int base = lower; base <= upper; ++base) {
         input[base - lower] = input[base];
