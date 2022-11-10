@@ -22,7 +22,6 @@
 #define COMMAND_COMPLETE_TASK 'c'
 #define COMMAND_PRINT_COMPLETE_TASKS 'P'
 #define COMMAND_EXPECTED_COMPLETE_TIME 'e'
-#define COMMAND_COUNT_TASKS 'n'
 
 // Stage 3
 #define COMMAND_DELETE_TASK 'd'
@@ -169,8 +168,13 @@ void command_loop(struct todo_list *todo) {
             char task_name[MAX_TASK_LENGTH];
             char task_category[MAX_CATEGORY_LENGTH];
 
-            parse_task_category_line(buffer, task_name, task_category);
-            update_task_priority(todo, task_name, task_category);
+            int items = 0;
+            struct task *node = todo->tasks;
+            while(node){
+                items++;
+                node = node->next;
+            }
+            printf("There are 2 items on your list!\n", items);
         } else if (command == COMMAND_COMPLETE_TASK) {
             // Create strings for `task`/`category` and ints for times, then populate
             // them using the contents of `buffer`.
