@@ -217,6 +217,22 @@ void command_loop(struct todo_list *todo) {
                 node = node->next;
             }
         } else if (command == COMMAND_DELETE_TASK) {
+
+            char task_name[MAX_TASK_LENGTH];
+            char category[MAX_CATEGORY_LENGTH];
+            parse_task_category_line(buffer, task_name, category);
+
+            struct task *task_found = find_task(todo, task_name, category);
+            if (task_found == NULL) {
+                printf("Could not find task '%s' in category '%s'.\n",
+                        task_name, category);
+            } else {
+                task_found = remove_task(todo, task_name, category);
+                free(task_found);
+            }
+        } else if (command == COMMAND_FINISH_DAY) {
+            finish_day(todo);
+        } else if (command == COMMAND_REPEATABLE_TASK) {
             char task_name[MAX_TASK_LENGTH];
             char category[MAX_CATEGORY_LENGTH];
             parse_task_category_line(buffer, task_name, category);
@@ -231,21 +247,6 @@ void command_loop(struct todo_list *todo) {
                 } else {
                     task_found->repeat = 1;
                 }
-            }
-        } else if (command == COMMAND_FINISH_DAY) {
-            finish_day(todo);
-        } else if (command == COMMAND_REPEATABLE_TASK) {
-            char task_name[MAX_TASK_LENGTH];
-            char category[MAX_CATEGORY_LENGTH];
-            parse_task_category_line(buffer, task_name, category);
-
-            struct task *task_found = find_task(todo, task_name, category);
-            if (task_found == NULL) {
-                printf("Could not find task '%s' in category '%s'.\n",
-                        task_name, category);
-            } else {
-                task_found = remove_task(todo, task_name, category);
-                free(task_found);
             }
         } else if (command == COMMAND_MATCH_TASKS) {
             trim_whitespace(buffer);
