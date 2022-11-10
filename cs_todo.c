@@ -165,9 +165,6 @@ void command_loop(struct todo_list *todo) {
             parse_task_category_line(buffer, task_name, task_category);
             update_task_priority(todo, task_name, task_category);
         } else if (command == COMMAND_COUNT_TASKS) {
-            char task_name[MAX_TASK_LENGTH];
-            char task_category[MAX_CATEGORY_LENGTH];
-
             int items = 0;
             struct task *node = todo->tasks;
             while(node){
