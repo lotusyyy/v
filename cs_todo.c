@@ -467,7 +467,7 @@ int match(char name[MAX_TASK_LENGTH], char pattern[MAX_TASK_LENGTH]) {
         if (pattern[j] == '*') {
             strcpy(temp2, pattern + j + 1);
 
-            for (int k = 0; k < len_name; k++) {
+            for (int k = 0; k+i < len_name; k++) {
                 strcpy(temp1, name + i + k);
                 if (match(temp1, temp2)) {
                     return 1;
