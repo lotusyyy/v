@@ -498,7 +498,6 @@ int match(char name[MAX_TASK_LENGTH], char pattern[MAX_TASK_LENGTH]) {
             j = j2 + 1;
             return 0;
         } else {
-
             if (name[i] == pattern[j]) {
                 i++;
                 j++;
@@ -508,7 +507,11 @@ int match(char name[MAX_TASK_LENGTH], char pattern[MAX_TASK_LENGTH]) {
         }
     }
 
-    return 1;
+    if (i == len_name && j == len_pattern) {
+        return 1;
+    }
+
+    return 0;
 }
 void free_todo_list(struct todo_list *todo) {
     struct task *node_task = todo->tasks;
