@@ -174,7 +174,7 @@ void command_loop(struct todo_list *todo) {
                 items++;
                 node = node->next;
             }
-            printf("There are 2 items on your list!\n", items);
+            printf("There are %d items on your list!\n", items);
         } else if (command == COMMAND_COMPLETE_TASK) {
             // Create strings for `task`/`category` and ints for times, then populate
             // them using the contents of `buffer`.
