@@ -268,10 +268,11 @@ void command_loop(struct todo_list *todo) {
             while (1) {
                 int found = 0;
                 struct task *node = todo->tasks;
-                printf("Tasks matching pattern '%s':\n", buffer);
                 while (node) {
                     if (match(node->task_name, buffer)) {
-                        remove_task(todo, node->task_name, node->category);
+                        struct task *temp = remove_task(todo, node->task_name,
+                                node->category);
+                        free(temp);
                         found = 1;
                         break;
                     }
@@ -467,7 +468,7 @@ int match(char name[MAX_TASK_LENGTH], char pattern[MAX_TASK_LENGTH]) {
         if (pattern[j] == '*') {
             strcpy(temp2, pattern + j + 1);
 
-            for (int k = 0; k+i < len_name; k++) {
+            for (int k = 0; k + i <= len_name; k++) {
                 strcpy(temp1, name + i + k);
                 if (match(temp1, temp2)) {
                     return 1;
