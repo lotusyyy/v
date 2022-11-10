@@ -597,8 +597,14 @@ void update_task_priority(struct todo_list *todo,
                 && strcmp(cur->category, task_category) == 0) {
             cur->priority++;
             cur->priority %= 3;
+            break;
         }
         cur = cur->next;
+    }
+
+    if (!cur) {
+        printf("Could not find task '[%s]' in category '[%s]'.\n",
+                task_name, task_category);
     }
 }
 
