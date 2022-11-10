@@ -254,10 +254,8 @@ void command_loop(struct todo_list *todo) {
             printf("Tasks matching pattern '%s':\n", buffer);
             int id = 1;
             while (node) {
-                if (match(node->task_name, buffer)) {
-                    print_one_task(id, node);
-                    id++;
-                }
+                if (match(node->task_name, buffer)) print_one_task(id++, node);
+
                 node = node->next;
             }
 
@@ -490,18 +488,18 @@ int match(char name[MAX_TASK_LENGTH], char pattern[MAX_TASK_LENGTH]) {
             }
             return 0;
         } else if (pattern[j] == '[') {
-            int j2 = j;
-            while (pattern[j2] != ']') {
-                j2++;
+            int end = j;
+            while (pattern[end] != ']') {
+                end++;
             }
 
             strcpy(temp1, name + i);
-            for (int k = j + 1; k < j2; k++) {
+            for (int k = j + 1; k < end; k++) {
                 temp2[0] = pattern[k];
-                strcpy(temp2 + 1, pattern + j2 + 1);
+                strcpy(temp2 + 1, pattern + end + 1);
                 if (match(temp1, temp2)) return 1;
             }
-            j = j2 + 1;
+            j = end + 1;
             return 0;
         } else {
             if (name[i] == pattern[j]) {
@@ -736,25 +734,25 @@ void parse_complete_task_line(char buffer[MAX_STRING_LENGTH],
         int *finish_time) {
     remove_newline(buffer);
 
-// Extract value 1 as string
+    // Extract value 1 as string
     char *name_str = strtok(buffer, " ");
     if (name_str != NULL) {
         strcpy(task_name, name_str);
     }
 
-// Extract value 2 as string
+    // Extract value 2 as string
     char *category_str = strtok(NULL, " ");
     if (category_str != NULL) {
         strcpy(task_category, category_str);
     }
 
-// Extract value 2 as string
+    // Extract value 2 as string
     char *start_str = strtok(NULL, " ");
     if (start_str != NULL) {
         *start_time = atoi(start_str);
     }
 
-// Extract value 2 as string
+    // Extract value 2 as string
     char *finish_str = strtok(NULL, " ");
     if (finish_str != NULL) {
         *finish_time = atoi(finish_str);
