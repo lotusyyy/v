@@ -167,7 +167,7 @@ void command_loop(struct todo_list *todo) {
         } else if (command == COMMAND_COUNT_TASKS) {
             int items = 0;
             struct task *node = todo->tasks;
-            while(node){
+            while (node) {
                 items++;
                 node = node->next;
             }
@@ -253,7 +253,7 @@ void command_loop(struct todo_list *todo) {
 
             struct task *node = todo->tasks;
             printf("Tasks matching pattern '%s':\n", buffer);
-            int id = 0;
+            int id = 1;
             while (node) {
                 if (match(node->task_name, buffer)) {
                     print_one_task(id, node);
@@ -473,12 +473,14 @@ int match(char name[MAX_TASK_LENGTH], char pattern[MAX_TASK_LENGTH]) {
                     return 1;
                 }
             }
+            return 0;
         } else if (pattern[j] == '?') {
             strcpy(temp2, pattern + j + 1);
             strcpy(temp1, name + i + 1);
             if (match(temp1, temp2)) {
                 return 1;
             }
+            return 0;
         } else if (pattern[j] == '[') {
             int j2 = j;
             while (pattern[j2] != ']') {
@@ -494,7 +496,9 @@ int match(char name[MAX_TASK_LENGTH], char pattern[MAX_TASK_LENGTH]) {
                 }
             }
             j = j2 + 1;
+            return 0;
         } else {
+
             if (name[i] == pattern[j]) {
                 i++;
                 j++;
@@ -604,8 +608,8 @@ void update_task_priority(struct todo_list *todo,
     }
 
     if (!cur) {
-        printf("Could not find task '%s' in category '%s'.\n",
-                task_name, task_category);
+        printf("Could not find task '%s' in category '%s'.\n", task_name,
+                task_category);
     }
 }
 
