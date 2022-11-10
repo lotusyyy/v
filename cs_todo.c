@@ -396,12 +396,14 @@ int get_completion_time(struct todo_list *todo,
 
 void sort(struct todo_list *todo) {
     struct task *iter1 = todo->tasks;
-    struct task *iter2 = todo->tasks;
 
     while (iter1) {
+        struct task *iter2 = todo->tasks;
+
         while (iter2 && iter2->next) {
             if (task_compare(iter2, iter2->next) > 0) {
                 struct task temp;
+
                 strcpy(temp.task_name, iter2->task_name);
                 strcpy(temp.category, iter2->category);
                 temp.priority = iter2->priority;
