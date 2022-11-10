@@ -12,10 +12,27 @@
 #define MAX_STRING_LENGTH 1024
 
 // You *should* #define each command
+// Stage 1
 #define COMMAND_ADD_TASK 'a'
 #define COMMAND_PRINT_TASKS 'p'
 #define COMMAND_UPDATE_TASK_PRIORITY 'i'
 #define COMMAND_COUNT_TASKS 'n'
+
+// Stage 2
+#define COMMAND_COMPLETE_TASK 'c'
+#define COMMAND_PRINT_COMPLETE_TASKS 'P'
+#define COMMAND_EXPECTED_COMPLETE_TIME 'e'
+#define COMMAND_COUNT_TASKS 'n'
+
+// Stage 3
+#define COMMAND_DELETE_TASK 'd'
+#define COMMAND_FINISH_DAY 'f'
+#define COMMAND_REPEATABLE_TASK 'r'
+
+// Stage 4
+#define COMMAND_MATCH_TASKS 'm'
+#define COMMAND_DELETE_MATCH_INCOMPLETE_TASKS '^'
+#define COMMAND_SORT_INCOMPLETE_TASKS 's'
 
 enum priority {
     LOW, MEDIUM, HIGH
@@ -25,6 +42,7 @@ struct task {
     char task_name[MAX_TASK_LENGTH];
     char category[MAX_CATEGORY_LENGTH];
     enum priority priority;
+    int repeat;
 
     struct task *next;
 };
@@ -46,13 +64,15 @@ struct todo_list {
 ////////////////////////////////////////////////////////////////////////////////
 
 void command_loop(struct todo_list *todo);
+void free_todo_list(struct todo_list *todo);
 void add_task(struct todo_list *todo, char task_name[MAX_TASK_LENGTH],
-        char task_category[MAX_CATEGORY_LENGTH], enum priority prio);
+        char task_category[MAX_CATEGORY_LENGTH], enum priority prio, int repeat);
 void print_tasks(struct todo_list *todo);
 void update_task_priority(struct todo_list *todo,
         char task_name[MAX_TASK_LENGTH],
         char task_category[MAX_CATEGORY_LENGTH]);
 void count_tasks(struct todo_list *todo);
+
 ////////////////////////////////////////////////////////////////////////////////
 //////////////////////// PROVIDED HELPER PROTOTYPES ////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -97,6 +117,218 @@ int main(void) {
     return 0;
 }
 
+struct task* find_task(struct todo_list *todo, char task_name[MAX_TASK_LENGTH],
+        char task_category[MAX_CATEGORY_LENGTH]) {
+
+    struct task *node = todo->tasks;
+    while (node) {
+        if (strcmp(task_name, node->task_name) == 0
+                && strcmp(task_category, node->category) == 0) {
+            return node;
+        }
+        node = node->next;
+    }
+    return NULL;
+}
+
+struct task* remove_task(struct todo_list *todo,
+        char task_name[MAX_TASK_LENGTH],
+        char task_category[MAX_CATEGORY_LENGTH]) {
+
+    struct task *task_found = find_task(todo, task_name, task_category);
+    if (!task_found) {
+        return NULL;
+    }
+
+    if (task_found == todo->tasks) {
+        todo->tasks = todo->tasks->next;
+    } else {
+        struct task *node = todo->tasks;
+        while (node->next != task_found) {
+            node = node->next;
+        }
+        node->next = task_found->next;
+    }
+    return task_found;
+}
+
+void add_complete_task(struct todo_list *todo, struct task *task_found,
+        int start_time, int finish_time) {
+
+    if (start_time == -1) {
+        start_time = 0;
+        struct completed_task *comp = todo->completed_tasks;
+        while (comp) {
+            if (comp->finish_time > start_time) {
+                start_time = comp->finish_time;
+            }
+            comp = comp->next;
+        }
+    }
+
+    struct completed_task *new_comp = malloc(sizeof(struct completed_task));
+    new_comp->start_time = start_time;
+    new_comp->finish_time = finish_time;
+    new_comp->next = NULL;
+    new_comp->task = task_found;
+    task_found->next = NULL;
+
+    new_comp->next = todo->completed_tasks;
+    todo->completed_tasks = new_comp;
+
+    /*
+     if (todo->completed_tasks == NULL) {
+     todo->completed_tasks = new_comp;
+     } else {
+     struct completed_task *tail = todo->completed_tasks;
+     while (tail->next) {
+     tail = tail->next;
+     }
+     tail->next = new_comp;
+     }
+     */
+}
+
+int get_completion_time(struct todo_list *todo,
+        char task_category[MAX_CATEGORY_LENGTH]) {
+    int total = 0;
+    int count = 0;
+
+    struct completed_task *comp = todo->completed_tasks;
+    while (comp) {
+        struct task *task_node = comp->task;
+        while (task_node) {
+            if (strcmp(task_category, task_node->category) == 0) {
+                total += comp->finish_time - comp->start_time;
+                count++;
+            }
+            task_node = task_node->next;
+        }
+        comp = comp->next;
+    }
+
+    if (count == 0) {
+        return 100;
+    } else {
+        double avg = total * 1.0 / count;
+        return (int) avg;
+    }
+}
+
+void sort(struct todo_list *todo) {
+    struct task *iter1 = todo->tasks;
+    struct task *iter2 = todo->tasks;
+
+    while (iter1) {
+        while (iter2 && iter2->next) {
+            if (task_compare(iter2, iter2->next) > 0) {
+                struct task temp;
+                strcpy(temp.task_name, iter2->task_name);
+                strcpy(temp.category, iter2->category);
+                temp.priority = iter2->priority;
+                temp.repeat = iter2->repeat;
+
+                strcpy(iter2->task_name, iter2->next->task_name);
+                strcpy(iter2->category, iter2->next->category);
+                iter2->priority = iter2->next->priority;
+                iter2->repeat = iter2->next->repeat;
+
+                strcpy(iter2->next->task_name, temp.task_name);
+                strcpy(iter2->next->category, temp.category);
+                iter2->next->priority = temp.priority;
+                iter2->next->repeat = temp.repeat;
+            }
+            iter2 = iter2->next;
+        }
+        iter1 = iter1->next;
+    }
+}
+
+void finish_day(struct todo_list *todo) {
+    struct completed_task *comp = todo->completed_tasks;
+    while (comp) {
+        struct task *task_node = comp->task;
+        while (task_node) {
+            if (task_node->repeat) {
+                add_task(todo, task_node->task_name, task_node->category,
+                        task_node->priority, 0);
+            }
+            task_node = task_node->next;
+        }
+        comp = comp->next;
+    }
+
+    struct completed_task *node_completed_task = todo->completed_tasks;
+    while (node_completed_task) {
+        struct completed_task *temp_completed_task = node_completed_task;
+        node_completed_task = node_completed_task->next;
+
+        struct task *node_task = node_completed_task->task;
+        while (node_task) {
+            struct task *temp_task = node_task;
+            node_task = node_task->next;
+            free(temp_task);
+        }
+
+        free(temp_completed_task);
+    }
+    todo->completed_tasks = NULL;
+}
+
+int match(char name[MAX_TASK_LENGTH], char pattern[MAX_TASK_LENGTH]) {
+    char temp1[MAX_TASK_LENGTH];
+    char temp2[MAX_TASK_LENGTH];
+
+    int len_name = strlen(name);
+    int len_pattern = strlen(pattern);
+
+    int i = 0;
+    int j = 0;
+
+    while (i < len_name && j < len_pattern) {
+        if (pattern[j] == '*') {
+            strcpy(temp2, pattern + j + 1);
+
+            for (int k = 0; k < len_name; k++) {
+                strcpy(temp1, name + i + k);
+                if (match(temp1, temp2)) {
+                    return 1;
+                }
+            }
+        } else if (pattern[j] == '?') {
+            strcpy(temp2, pattern + j + 1);
+            strcpy(temp1, name + i + 1);
+            if (match(temp1, temp2)) {
+                return 1;
+            }
+        } else if (pattern[j] == '[') {
+            int j2 = j;
+            while (pattern[j2] != ']') {
+                j2++;
+            }
+
+            strcpy(temp1, name + i);
+            for (int k = j + 1; k < j2; k++) {
+                temp2[0] = pattern[k];
+                strcpy(temp2 + 1, pattern + j2 + 1);
+                if (match(temp1, temp2)) {
+                    return 1;
+                }
+            }
+            j = j2 + 1;
+        } else {
+            if (name[i] == pattern[j]) {
+                i++;
+                j++;
+            } else {
+                return 0;
+            }
+        }
+    }
+
+    return 1;
+}
+
 /**
  * The central loop that executes commands until the program is completed.
  *
@@ -114,47 +346,188 @@ void command_loop(struct todo_list *todo) {
         char buffer[MAX_STRING_LENGTH];
         fgets(buffer, MAX_STRING_LENGTH, stdin);
 
-        // Create variables for each part of the command being scanned in
-        // (name of task, category of task and priority of task)
-        char task_name[MAX_TASK_LENGTH];
-        char task_category[MAX_CATEGORY_LENGTH];
-        enum priority task_priority;
-
         if (command == COMMAND_ADD_TASK) {
+            // Create variables for each part of the command being scanned in
+            // (name of task, category of task and priority of task)
+            char task_name[MAX_TASK_LENGTH];
+            char task_category[MAX_CATEGORY_LENGTH];
+            enum priority task_priority;
+
             parse_add_task_line(buffer, task_name, task_category,
                     &task_priority);
-            add_task(todo, task_name, task_category, task_priority);
+            add_task(todo, task_name, task_category, task_priority, 0);
 
-        }
-        if (command == COMMAND_PRINT_TASKS) {
+        } else if (command == COMMAND_PRINT_TASKS) {
             print_tasks(todo);
-        }
-        if (command == COMMAND_UPDATE_TASK_PRIORITY) {
+        } else if (command == COMMAND_UPDATE_TASK_PRIORITY) {
+            char task_name[MAX_TASK_LENGTH];
+            char task_category[MAX_CATEGORY_LENGTH];
 
             parse_task_category_line(buffer, task_name, task_category);
             update_task_priority(todo, task_name, task_category);
-        }
-        if (command == COMMAND_COUNT_TASKS) {
+        } else if (command == COMMAND_COUNT_TASKS) {
+            char task_name[MAX_TASK_LENGTH];
+            char task_category[MAX_CATEGORY_LENGTH];
 
             parse_task_category_line(buffer, task_name, task_category);
             update_task_priority(todo, task_name, task_category);
+        } else if (command == COMMAND_COMPLETE_TASK) {
+            // Create strings for `task`/`category` and ints for times, then populate
+            // them using the contents of `buffer`.
+            char task_name[MAX_TASK_LENGTH];
+            char category[MAX_CATEGORY_LENGTH];
+            int start_time;
+            int finish_time;
+            parse_complete_task_line(buffer, task_name, category, &start_time,
+                    &finish_time);
+
+            struct task *task_found = find_task(todo, task_name, category);
+            if (task_found == NULL) {
+                printf("Could not find task '[%s]' in category '[%s]'.\n",
+                        task_name, category);
+            } else {
+                task_found = remove_task(todo, task_name, category);
+                add_complete_task(todo, task_found, start_time, finish_time);
+            }
+        } else if (command == COMMAND_PRINT_COMPLETE_TASKS) {
+            struct completed_task *node = todo->completed_tasks;
+
+            printf("==== Completed Tasks ====\n");
+            if (node == NULL) {
+                printf("No tasks have been completed today!\n");
+            }
+            while (node) {
+                print_completed_task(node);
+                node = node->next;
+            }
+            printf("=========================\n");
+
+        } else if (command == COMMAND_EXPECTED_COMPLETE_TIME) {
+            struct task *node = todo->tasks;
+            printf("Expected completion time for remaining tasks:\n");
+            int id = 0;
+            while (node) {
+                int time = get_completion_time(todo, node->category);
+                printf("\n");
+                print_one_task(id, node);
+                printf("Expected completion time: %d minutes\n", time);
+                printf("\n");
+
+                id++;
+                node = node->next;
+            }
+        } else if (command == COMMAND_DELETE_TASK) {
+            char task_name[MAX_TASK_LENGTH];
+            char category[MAX_CATEGORY_LENGTH];
+            parse_task_category_line(buffer, task_name, category);
+
+            struct task *task_found = find_task(todo, task_name, category);
+            if (task_found == NULL) {
+                printf("Could not find task '[%s]' in category '[%s]'.\n",
+                        task_name, category);
+            } else {
+                if (task_found->repeat) {
+                    task_found->repeat = 0;
+                } else {
+                    task_found->repeat = 1;
+                }
+            }
+        } else if (command == COMMAND_FINISH_DAY) {
+            finish_day(todo);
+        } else if (command == COMMAND_REPEATABLE_TASK) {
+            char task_name[MAX_TASK_LENGTH];
+            char category[MAX_CATEGORY_LENGTH];
+            parse_task_category_line(buffer, task_name, category);
+
+            struct task *task_found = find_task(todo, task_name, category);
+            if (task_found == NULL) {
+                printf("Could not find task '[%s]' in category '[%s]'.\n",
+                        task_name, category);
+            } else {
+                task_found = remove_task(todo, task_name, category);
+                free(task_found);
+            }
+        } else if (command == COMMAND_MATCH_TASKS) {
+            trim_whitespace(buffer);
+
+            struct task *node = todo->tasks;
+            printf("Tasks matching pattern '%s':\n", buffer);
+            int id = 0;
+            while (node) {
+                if (match(node->task_name, buffer)) {
+                    print_one_task(id, node);
+                    id++;
+                }
+                node = node->next;
+            }
+
+        } else if (command == COMMAND_DELETE_MATCH_INCOMPLETE_TASKS) {
+            trim_whitespace(buffer);
+
+            while (1) {
+                int found = 0;
+                struct task *node = todo->tasks;
+                printf("Tasks matching pattern '%s':\n", buffer);
+                while (node) {
+                    if (match(node->task_name, buffer)) {
+                        remove_task(todo, node->task_name, node->category);
+                        found = 1;
+                        break;
+                    }
+                    node = node->next;
+                }
+
+                if (!found) {
+                    break;
+                }
+            }
+        } else if (command == COMMAND_SORT_INCOMPLETE_TASKS) {
+            sort(todo);
         }
 
         printf("Enter Command: ");
     }
+
+    free_todo_list(todo);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////// YOUR HELPER FUNCTIONS ///////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-// You should add any helper functions you create here
+void free_todo_list(struct todo_list *todo) {
+    struct task *node_task = todo->tasks;
+    while (node_task) {
+        struct task *temp_task = node_task;
+        node_task = node_task->next;
+        free(temp_task);
+    }
+
+    struct completed_task *node_completed_task = todo->completed_tasks;
+    while (node_completed_task) {
+        struct completed_task *temp_completed_task = node_completed_task;
+        node_completed_task = node_completed_task->next;
+
+        node_task = node_completed_task->task;
+        while (node_task) {
+            struct task *temp_task = node_task;
+            node_task = node_task->next;
+            free(temp_task);
+        }
+
+        free(temp_completed_task);
+    }
+
+    free(todo);
+}
+
 void add_task(struct todo_list *todo, char task_name[MAX_TASK_LENGTH],
-        char task_category[MAX_CATEGORY_LENGTH], enum priority prio) {
+        char task_category[MAX_CATEGORY_LENGTH], enum priority prio, int repeat) {
     struct task *new_node = malloc(sizeof(struct task));
     strcpy(new_node->task_name, task_name);
     strcpy(new_node->category, task_category);
     new_node->priority = prio;
+    new_node->repeat = repeat;
     new_node->next = NULL;
 
     if (todo->tasks == NULL) {
@@ -265,19 +638,19 @@ void parse_add_task_line(char buffer[MAX_STRING_LENGTH],
         char task_category[MAX_CATEGORY_LENGTH], enum priority *prio) {
     remove_newline(buffer);
 
-    // Extract value 1 as string
+// Extract value 1 as string
     char *name_str = strtok(buffer, " ");
     if (name_str != NULL) {
         strcpy(task_name, name_str);
     }
 
-    // Extract value 2 as string
+// Extract value 2 as string
     char *category_str = strtok(NULL, " ");
     if (category_str != NULL) {
         strcpy(task_category, category_str);
     }
 
-    // Extract value 3 as string
+// Extract value 3 as string
     char *prio_str = strtok(NULL, " ");
     if (prio_str != NULL) {
         *prio = string_to_priority(prio_str);
@@ -302,13 +675,13 @@ void parse_task_category_line(char buffer[MAX_STRING_LENGTH],
         char task_category[MAX_CATEGORY_LENGTH]) {
     remove_newline(buffer);
 
-    // Extract value 1 as string
+// Extract value 1 as string
     char *name_str = strtok(buffer, " ");
     if (name_str != NULL) {
         strcpy(task_name, name_str);
     }
 
-    // Extract value 2 as string
+// Extract value 2 as string
     char *category_str = strtok(NULL, " ");
     if (category_str != NULL) {
         strcpy(task_category, category_str);
@@ -333,25 +706,25 @@ void parse_complete_task_line(char buffer[MAX_STRING_LENGTH],
         int *finish_time) {
     remove_newline(buffer);
 
-    // Extract value 1 as string
+// Extract value 1 as string
     char *name_str = strtok(buffer, " ");
     if (name_str != NULL) {
         strcpy(task_name, name_str);
     }
 
-    // Extract value 2 as string
+// Extract value 2 as string
     char *category_str = strtok(NULL, " ");
     if (category_str != NULL) {
         strcpy(task_category, category_str);
     }
 
-    // Extract value 2 as string
+// Extract value 2 as string
     char *start_str = strtok(NULL, " ");
     if (start_str != NULL) {
         *start_time = atoi(start_str);
     }
 
-    // Extract value 2 as string
+// Extract value 2 as string
     char *finish_str = strtok(NULL, " ");
     if (finish_str != NULL) {
         *finish_time = atoi(finish_str);
@@ -427,13 +800,13 @@ void priority_to_string(enum priority prio, char out[MAX_STRING_LENGTH]) {
  *     Nothing
  */
 void remove_newline(char input[MAX_STRING_LENGTH]) {
-    // Find the newline or end of string
+// Find the newline or end of string
     int index = 0;
     while (input[index] != '\n' && input[index] != '\0') {
         index++;
     }
-    // Goto the last position in the array and replace with '\0'
-    // Note: will have no effect if already at null terminator
+// Goto the last position in the array and replace with '\0'
+// Note: will have no effect if already at null terminator
     input[index] = '\0';
 }
 
@@ -454,20 +827,18 @@ void trim_whitespace(char input[MAX_STRING_LENGTH]) {
     remove_newline(input);
 
     int lower;
-    lower = 0;
-    while (input[lower] == ' ') {
-        ++lower;
-    }
+    for (lower = 0; input[lower] == ' '; ++lower)
+        ;
 
     int upper;
-    upper = strlen(input) - 1;
-    while (input[upper] == ' ') {
-        --upper;
-    }
+    for (upper = strlen(input) - 1; input[upper] == ' '; --upper)
+        ;
 
     for (int base = lower; base <= upper; ++base) {
         input[base - lower] = input[base];
     }
+
+    input[upper - lower + 1] = '\0';
 }
 
 /**
