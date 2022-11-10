@@ -205,11 +205,10 @@ void command_loop(struct todo_list *todo) {
 
         } else if (command == COMMAND_EXPECTED_COMPLETE_TIME) {
             struct task *node = todo->tasks;
-            printf("Expected completion time for remaining tasks:\n");
+            printf("Expected completion time for remaining tasks:\n\n");
             int id = 1;
             while (node) {
                 int time = get_completion_time(todo, node->category);
-                printf("\n");
                 print_one_task(id, node);
                 printf("Expected completion time: %d minutes\n", time);
                 printf("\n");
