@@ -183,7 +183,7 @@ void command_loop(struct todo_list *todo) {
 
             struct task *task_found = find_task(todo, task_name, category);
             if (task_found == NULL) {
-                printf("Could not find task '[%s]' in category '[%s]'.\n",
+                printf("Could not find task '%s' in category '%s'.\n",
                         task_name, category);
             } else {
                 task_found = remove_task(todo, task_name, category);
@@ -223,7 +223,7 @@ void command_loop(struct todo_list *todo) {
 
             struct task *task_found = find_task(todo, task_name, category);
             if (task_found == NULL) {
-                printf("Could not find task '[%s]' in category '[%s]'.\n",
+                printf("Could not find task '%s' in category '%s'.\n",
                         task_name, category);
             } else {
                 if (task_found->repeat) {
@@ -241,7 +241,7 @@ void command_loop(struct todo_list *todo) {
 
             struct task *task_found = find_task(todo, task_name, category);
             if (task_found == NULL) {
-                printf("Could not find task '[%s]' in category '[%s]'.\n",
+                printf("Could not find task '%s' in category '%s'.\n",
                         task_name, category);
             } else {
                 task_found = remove_task(todo, task_name, category);
@@ -603,7 +603,7 @@ void update_task_priority(struct todo_list *todo,
     }
 
     if (!cur) {
-        printf("Could not find task '[%s]' in category '[%s]'.\n",
+        printf("Could not find task '%s' in category '%s'.\n",
                 task_name, task_category);
     }
 }
