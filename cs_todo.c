@@ -72,6 +72,18 @@ void update_task_priority(struct todo_list *todo,
         char task_name[MAX_TASK_LENGTH],
         char task_category[MAX_CATEGORY_LENGTH]);
 void count_tasks(struct todo_list *todo);
+struct task* find_task(struct todo_list *todo, char task_name[MAX_TASK_LENGTH],
+        char task_category[MAX_CATEGORY_LENGTH]);
+struct task* remove_task(struct todo_list *todo,
+        char task_name[MAX_TASK_LENGTH],
+        char task_category[MAX_CATEGORY_LENGTH]);
+void add_complete_task(struct todo_list *todo, struct task *task_found,
+        int start_time, int finish_time);
+int get_completion_time(struct todo_list *todo,
+        char task_category[MAX_CATEGORY_LENGTH]);
+void sort(struct todo_list *todo);
+void finish_day(struct todo_list *todo);
+int match(char name[MAX_TASK_LENGTH], char pattern[MAX_TASK_LENGTH]);
 
 ////////////////////////////////////////////////////////////////////////////////
 //////////////////////// PROVIDED HELPER PROTOTYPES ////////////////////////////
@@ -117,6 +129,171 @@ int main(void) {
     return 0;
 }
 
+/**
+ * The central loop that executes commands until the program is completed.
+ *
+ * Parameters:
+ *     todo - The todo list to execute commands on.
+ *
+ * Returns:
+ *     Nothing
+ */
+void command_loop(struct todo_list *todo) {
+    printf("Enter Command: ");
+    char command;
+    while (scanf(" %c", &command) == 1) {
+        // Create a string to scan the entire command input into.
+        char buffer[MAX_STRING_LENGTH];
+        fgets(buffer, MAX_STRING_LENGTH, stdin);
+
+        if (command == COMMAND_ADD_TASK) {
+            // Create variables for each part of the command being scanned in
+            // (name of task, category of task and priority of task)
+            char task_name[MAX_TASK_LENGTH];
+            char task_category[MAX_CATEGORY_LENGTH];
+            enum priority task_priority;
+
+            parse_add_task_line(buffer, task_name, task_category,
+                    &task_priority);
+            add_task(todo, task_name, task_category, task_priority, 0);
+
+        } else if (command == COMMAND_PRINT_TASKS) {
+            print_tasks(todo);
+        } else if (command == COMMAND_UPDATE_TASK_PRIORITY) {
+            char task_name[MAX_TASK_LENGTH];
+            char task_category[MAX_CATEGORY_LENGTH];
+
+            parse_task_category_line(buffer, task_name, task_category);
+            update_task_priority(todo, task_name, task_category);
+        } else if (command == COMMAND_COUNT_TASKS) {
+            char task_name[MAX_TASK_LENGTH];
+            char task_category[MAX_CATEGORY_LENGTH];
+
+            parse_task_category_line(buffer, task_name, task_category);
+            update_task_priority(todo, task_name, task_category);
+        } else if (command == COMMAND_COMPLETE_TASK) {
+            // Create strings for `task`/`category` and ints for times, then populate
+            // them using the contents of `buffer`.
+            char task_name[MAX_TASK_LENGTH];
+            char category[MAX_CATEGORY_LENGTH];
+            int start_time;
+            int finish_time;
+            parse_complete_task_line(buffer, task_name, category, &start_time,
+                    &finish_time);
+
+            struct task *task_found = find_task(todo, task_name, category);
+            if (task_found == NULL) {
+                printf("Could not find task '[%s]' in category '[%s]'.\n",
+                        task_name, category);
+            } else {
+                task_found = remove_task(todo, task_name, category);
+                add_complete_task(todo, task_found, start_time, finish_time);
+            }
+        } else if (command == COMMAND_PRINT_COMPLETE_TASKS) {
+            struct completed_task *node = todo->completed_tasks;
+
+            printf("==== Completed Tasks ====\n");
+            if (node == NULL) {
+                printf("No tasks have been completed today!\n");
+            }
+            while (node) {
+                print_completed_task(node);
+                node = node->next;
+            }
+            printf("=========================\n");
+
+        } else if (command == COMMAND_EXPECTED_COMPLETE_TIME) {
+            struct task *node = todo->tasks;
+            printf("Expected completion time for remaining tasks:\n");
+            int id = 0;
+            while (node) {
+                int time = get_completion_time(todo, node->category);
+                printf("\n");
+                print_one_task(id, node);
+                printf("Expected completion time: %d minutes\n", time);
+                printf("\n");
+
+                id++;
+                node = node->next;
+            }
+        } else if (command == COMMAND_DELETE_TASK) {
+            char task_name[MAX_TASK_LENGTH];
+            char category[MAX_CATEGORY_LENGTH];
+            parse_task_category_line(buffer, task_name, category);
+
+            struct task *task_found = find_task(todo, task_name, category);
+            if (task_found == NULL) {
+                printf("Could not find task '[%s]' in category '[%s]'.\n",
+                        task_name, category);
+            } else {
+                if (task_found->repeat) {
+                    task_found->repeat = 0;
+                } else {
+                    task_found->repeat = 1;
+                }
+            }
+        } else if (command == COMMAND_FINISH_DAY) {
+            finish_day(todo);
+        } else if (command == COMMAND_REPEATABLE_TASK) {
+            char task_name[MAX_TASK_LENGTH];
+            char category[MAX_CATEGORY_LENGTH];
+            parse_task_category_line(buffer, task_name, category);
+
+            struct task *task_found = find_task(todo, task_name, category);
+            if (task_found == NULL) {
+                printf("Could not find task '[%s]' in category '[%s]'.\n",
+                        task_name, category);
+            } else {
+                task_found = remove_task(todo, task_name, category);
+                free(task_found);
+            }
+        } else if (command == COMMAND_MATCH_TASKS) {
+            trim_whitespace(buffer);
+
+            struct task *node = todo->tasks;
+            printf("Tasks matching pattern '%s':\n", buffer);
+            int id = 0;
+            while (node) {
+                if (match(node->task_name, buffer)) {
+                    print_one_task(id, node);
+                    id++;
+                }
+                node = node->next;
+            }
+
+        } else if (command == COMMAND_DELETE_MATCH_INCOMPLETE_TASKS) {
+            trim_whitespace(buffer);
+
+            while (1) {
+                int found = 0;
+                struct task *node = todo->tasks;
+                printf("Tasks matching pattern '%s':\n", buffer);
+                while (node) {
+                    if (match(node->task_name, buffer)) {
+                        remove_task(todo, node->task_name, node->category);
+                        found = 1;
+                        break;
+                    }
+                    node = node->next;
+                }
+
+                if (!found) {
+                    break;
+                }
+            }
+        } else if (command == COMMAND_SORT_INCOMPLETE_TASKS) {
+            sort(todo);
+        }
+
+        printf("Enter Command: ");
+    }
+
+    free_todo_list(todo);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////// YOUR HELPER FUNCTIONS ///////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 struct task* find_task(struct todo_list *todo, char task_name[MAX_TASK_LENGTH],
         char task_category[MAX_CATEGORY_LENGTH]) {
 
@@ -328,173 +505,6 @@ int match(char name[MAX_TASK_LENGTH], char pattern[MAX_TASK_LENGTH]) {
 
     return 1;
 }
-
-/**
- * The central loop that executes commands until the program is completed.
- *
- * Parameters:
- *     todo - The todo list to execute commands on.
- *
- * Returns:
- *     Nothing
- */
-void command_loop(struct todo_list *todo) {
-    printf("Enter Command: ");
-    char command;
-    while (scanf(" %c", &command) == 1) {
-        // Create a string to scan the entire command input into.
-        char buffer[MAX_STRING_LENGTH];
-        fgets(buffer, MAX_STRING_LENGTH, stdin);
-
-        if (command == COMMAND_ADD_TASK) {
-            // Create variables for each part of the command being scanned in
-            // (name of task, category of task and priority of task)
-            char task_name[MAX_TASK_LENGTH];
-            char task_category[MAX_CATEGORY_LENGTH];
-            enum priority task_priority;
-
-            parse_add_task_line(buffer, task_name, task_category,
-                    &task_priority);
-            add_task(todo, task_name, task_category, task_priority, 0);
-
-        } else if (command == COMMAND_PRINT_TASKS) {
-            print_tasks(todo);
-        } else if (command == COMMAND_UPDATE_TASK_PRIORITY) {
-            char task_name[MAX_TASK_LENGTH];
-            char task_category[MAX_CATEGORY_LENGTH];
-
-            parse_task_category_line(buffer, task_name, task_category);
-            update_task_priority(todo, task_name, task_category);
-        } else if (command == COMMAND_COUNT_TASKS) {
-            char task_name[MAX_TASK_LENGTH];
-            char task_category[MAX_CATEGORY_LENGTH];
-
-            parse_task_category_line(buffer, task_name, task_category);
-            update_task_priority(todo, task_name, task_category);
-        } else if (command == COMMAND_COMPLETE_TASK) {
-            // Create strings for `task`/`category` and ints for times, then populate
-            // them using the contents of `buffer`.
-            char task_name[MAX_TASK_LENGTH];
-            char category[MAX_CATEGORY_LENGTH];
-            int start_time;
-            int finish_time;
-            parse_complete_task_line(buffer, task_name, category, &start_time,
-                    &finish_time);
-
-            struct task *task_found = find_task(todo, task_name, category);
-            if (task_found == NULL) {
-                printf("Could not find task '[%s]' in category '[%s]'.\n",
-                        task_name, category);
-            } else {
-                task_found = remove_task(todo, task_name, category);
-                add_complete_task(todo, task_found, start_time, finish_time);
-            }
-        } else if (command == COMMAND_PRINT_COMPLETE_TASKS) {
-            struct completed_task *node = todo->completed_tasks;
-
-            printf("==== Completed Tasks ====\n");
-            if (node == NULL) {
-                printf("No tasks have been completed today!\n");
-            }
-            while (node) {
-                print_completed_task(node);
-                node = node->next;
-            }
-            printf("=========================\n");
-
-        } else if (command == COMMAND_EXPECTED_COMPLETE_TIME) {
-            struct task *node = todo->tasks;
-            printf("Expected completion time for remaining tasks:\n");
-            int id = 0;
-            while (node) {
-                int time = get_completion_time(todo, node->category);
-                printf("\n");
-                print_one_task(id, node);
-                printf("Expected completion time: %d minutes\n", time);
-                printf("\n");
-
-                id++;
-                node = node->next;
-            }
-        } else if (command == COMMAND_DELETE_TASK) {
-            char task_name[MAX_TASK_LENGTH];
-            char category[MAX_CATEGORY_LENGTH];
-            parse_task_category_line(buffer, task_name, category);
-
-            struct task *task_found = find_task(todo, task_name, category);
-            if (task_found == NULL) {
-                printf("Could not find task '[%s]' in category '[%s]'.\n",
-                        task_name, category);
-            } else {
-                if (task_found->repeat) {
-                    task_found->repeat = 0;
-                } else {
-                    task_found->repeat = 1;
-                }
-            }
-        } else if (command == COMMAND_FINISH_DAY) {
-            finish_day(todo);
-        } else if (command == COMMAND_REPEATABLE_TASK) {
-            char task_name[MAX_TASK_LENGTH];
-            char category[MAX_CATEGORY_LENGTH];
-            parse_task_category_line(buffer, task_name, category);
-
-            struct task *task_found = find_task(todo, task_name, category);
-            if (task_found == NULL) {
-                printf("Could not find task '[%s]' in category '[%s]'.\n",
-                        task_name, category);
-            } else {
-                task_found = remove_task(todo, task_name, category);
-                free(task_found);
-            }
-        } else if (command == COMMAND_MATCH_TASKS) {
-            trim_whitespace(buffer);
-
-            struct task *node = todo->tasks;
-            printf("Tasks matching pattern '%s':\n", buffer);
-            int id = 0;
-            while (node) {
-                if (match(node->task_name, buffer)) {
-                    print_one_task(id, node);
-                    id++;
-                }
-                node = node->next;
-            }
-
-        } else if (command == COMMAND_DELETE_MATCH_INCOMPLETE_TASKS) {
-            trim_whitespace(buffer);
-
-            while (1) {
-                int found = 0;
-                struct task *node = todo->tasks;
-                printf("Tasks matching pattern '%s':\n", buffer);
-                while (node) {
-                    if (match(node->task_name, buffer)) {
-                        remove_task(todo, node->task_name, node->category);
-                        found = 1;
-                        break;
-                    }
-                    node = node->next;
-                }
-
-                if (!found) {
-                    break;
-                }
-            }
-        } else if (command == COMMAND_SORT_INCOMPLETE_TASKS) {
-            sort(todo);
-        }
-
-        printf("Enter Command: ");
-    }
-
-    free_todo_list(todo);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////// YOUR HELPER FUNCTIONS ///////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-
 void free_todo_list(struct todo_list *todo) {
     struct task *node_task = todo->tasks;
     while (node_task) {
@@ -574,7 +584,7 @@ void print_tasks(struct todo_list *todo) {
     if (id == 1) {
         printf("All tasks completed, you smashed it!\n");
     }
-    printf("==== That's it! ====\n");
+    printf("====   That's it!   ====\n");
 }
 
 void update_task_priority(struct todo_list *todo,
