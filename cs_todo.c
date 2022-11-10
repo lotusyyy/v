@@ -429,7 +429,7 @@ void finish_day(struct todo_list *todo) {
         while (task_node) {
             if (task_node->repeat) {
                 add_task(todo, task_node->task_name, task_node->category,
-                        task_node->priority, 0);
+                        task_node->priority, 1);
             }
             task_node = task_node->next;
         }
