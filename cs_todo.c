@@ -519,7 +519,7 @@ void free_todo_list(struct todo_list *todo) {
         struct completed_task *temp_completed_task = node_completed_task;
         node_completed_task = node_completed_task->next;
 
-        node_task = node_completed_task->task;
+        node_task = temp_completed_task->task;
         while (node_task) {
             struct task *temp_task = node_task;
             node_task = node_task->next;
