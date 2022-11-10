@@ -71,9 +71,9 @@ void update_task_priority(struct todo_list *todo,
         char task_name[MAX_TASK_LENGTH],
         char task_category[MAX_CATEGORY_LENGTH]);
 void count_tasks(struct todo_list *todo);
-struct task* find_task(struct todo_list *todo, char task_name[MAX_TASK_LENGTH],
+struct task *find_task(struct todo_list *todo, char task_name[MAX_TASK_LENGTH],
         char task_category[MAX_CATEGORY_LENGTH]);
-struct task* remove_task(struct todo_list *todo,
+struct task *remove_task(struct todo_list *todo,
         char task_name[MAX_TASK_LENGTH],
         char task_category[MAX_CATEGORY_LENGTH]);
 void add_complete_task(struct todo_list *todo, struct task *task_found,
@@ -83,7 +83,7 @@ int get_completion_time(struct todo_list *todo,
 void sort(struct todo_list *todo);
 void finish_day(struct todo_list *todo);
 int match(char name[MAX_TASK_LENGTH], char pattern[MAX_TASK_LENGTH]);
-
+int find_remove_task(struct todo_list *todo, char pattern[MAX_STRING_LENGTH]);
 ////////////////////////////////////////////////////////////////////////////////
 //////////////////////// PROVIDED HELPER PROTOTYPES ////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -242,11 +242,10 @@ void command_loop(struct todo_list *todo) {
                 printf("Could not find task '%s' in category '%s'.\n",
                         task_name, category);
             } else {
-                if (task_found->repeat) {
+                if (task_found->repeat)
                     task_found->repeat = 0;
-                } else {
+                else
                     task_found->repeat = 1;
-                }
             }
         } else if (command == COMMAND_MATCH_TASKS) {
             trim_whitespace(buffer);
@@ -266,18 +265,7 @@ void command_loop(struct todo_list *todo) {
             trim_whitespace(buffer);
 
             while (1) {
-                int found = 0;
-                struct task *node = todo->tasks;
-                while (node) {
-                    if (match(node->task_name, buffer)) {
-                        struct task *temp = remove_task(todo, node->task_name,
-                                node->category);
-                        free(temp);
-                        found = 1;
-                        break;
-                    }
-                    node = node->next;
-                }
+                int found = find_remove_task(todo, buffer);
 
                 if (!found) {
                     break;
@@ -293,10 +281,28 @@ void command_loop(struct todo_list *todo) {
     free_todo_list(todo);
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////// YOUR HELPER FUNCTIONS ///////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
-struct task* find_task(struct todo_list *todo, char task_name[MAX_TASK_LENGTH],
+int find_remove_task(struct todo_list *todo, char pattern[MAX_STRING_LENGTH]) {
+    int found = 0;
+    struct task *node = todo->tasks;
+    while (node) {
+        if (match(node->task_name, pattern)) {
+            struct task *temp = remove_task(todo, node->task_name,
+                    node->category);
+            free(temp);
+            found = 1;
+            break;
+        }
+        node = node->next;
+    }
+    return found;
+}
+
+
+struct task *find_task(struct todo_list *todo, char task_name[MAX_TASK_LENGTH],
         char task_category[MAX_CATEGORY_LENGTH]) {
 
     struct task *node = todo->tasks;
@@ -310,7 +316,7 @@ struct task* find_task(struct todo_list *todo, char task_name[MAX_TASK_LENGTH],
     return NULL;
 }
 
-struct task* remove_task(struct todo_list *todo,
+struct task *remove_task(struct todo_list *todo,
         char task_name[MAX_TASK_LENGTH],
         char task_category[MAX_CATEGORY_LENGTH]) {
 
@@ -456,6 +462,7 @@ void finish_day(struct todo_list *todo) {
     todo->completed_tasks = NULL;
 }
 
+
 int match(char name[MAX_TASK_LENGTH], char pattern[MAX_TASK_LENGTH]) {
     char temp1[MAX_TASK_LENGTH];
     char temp2[MAX_TASK_LENGTH];
@@ -470,11 +477,9 @@ int match(char name[MAX_TASK_LENGTH], char pattern[MAX_TASK_LENGTH]) {
         if (pattern[j] == '*') {
             strcpy(temp2, pattern + j + 1);
 
-            for (int k = 0; k + i <= len_name; k++) {
-                strcpy(temp1, name + i + k);
-                if (match(temp1, temp2)) {
-                    return 1;
-                }
+            for (int position = 0; position + i <= len_name; position++) {
+                strcpy(temp1, name + i + position);
+                if (match(temp1, temp2)) return 1;
             }
             return 0;
         } else if (pattern[j] == '?') {
@@ -494,9 +499,7 @@ int match(char name[MAX_TASK_LENGTH], char pattern[MAX_TASK_LENGTH]) {
             for (int k = j + 1; k < j2; k++) {
                 temp2[0] = pattern[k];
                 strcpy(temp2 + 1, pattern + j2 + 1);
-                if (match(temp1, temp2)) {
-                    return 1;
-                }
+                if (match(temp1, temp2)) return 1;
             }
             j = j2 + 1;
             return 0;
@@ -665,19 +668,19 @@ void parse_add_task_line(char buffer[MAX_STRING_LENGTH],
         char task_category[MAX_CATEGORY_LENGTH], enum priority *prio) {
     remove_newline(buffer);
 
-// Extract value 1 as string
+    // Extract value 1 as string
     char *name_str = strtok(buffer, " ");
     if (name_str != NULL) {
         strcpy(task_name, name_str);
     }
 
-// Extract value 2 as string
+    // Extract value 2 as string
     char *category_str = strtok(NULL, " ");
     if (category_str != NULL) {
         strcpy(task_category, category_str);
     }
 
-// Extract value 3 as string
+    // Extract value 3 as string
     char *prio_str = strtok(NULL, " ");
     if (prio_str != NULL) {
         *prio = string_to_priority(prio_str);
@@ -702,13 +705,13 @@ void parse_task_category_line(char buffer[MAX_STRING_LENGTH],
         char task_category[MAX_CATEGORY_LENGTH]) {
     remove_newline(buffer);
 
-// Extract value 1 as string
+    // Extract value 1 as string
     char *name_str = strtok(buffer, " ");
     if (name_str != NULL) {
         strcpy(task_name, name_str);
     }
 
-// Extract value 2 as string
+    // Extract value 2 as string
     char *category_str = strtok(NULL, " ");
     if (category_str != NULL) {
         strcpy(task_category, category_str);
@@ -827,13 +830,13 @@ void priority_to_string(enum priority prio, char out[MAX_STRING_LENGTH]) {
  *     Nothing
  */
 void remove_newline(char input[MAX_STRING_LENGTH]) {
-// Find the newline or end of string
+    // Find the newline or end of string
     int index = 0;
     while (input[index] != '\n' && input[index] != '\0') {
         index++;
     }
-// Goto the last position in the array and replace with '\0'
-// Note: will have no effect if already at null terminator
+    // Goto the last position in the array and replace with '\0'
+    // Note: will have no effect if already at null terminator
     input[index] = '\0';
 }
 
@@ -854,12 +857,10 @@ void trim_whitespace(char input[MAX_STRING_LENGTH]) {
     remove_newline(input);
 
     int lower;
-    for (lower = 0; input[lower] == ' '; ++lower)
-        ;
+    for (lower = 0; input[lower] == ' '; ++lower);
 
     int upper;
-    for (upper = strlen(input) - 1; input[upper] == ' '; --upper)
-        ;
+    for (upper = strlen(input) - 1; input[upper] == ' '; --upper);
 
     for (int base = lower; base <= upper; ++base) {
         input[base - lower] = input[base];
