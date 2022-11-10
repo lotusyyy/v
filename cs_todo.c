@@ -441,7 +441,7 @@ void finish_day(struct todo_list *todo) {
         struct completed_task *temp_completed_task = node_completed_task;
         node_completed_task = node_completed_task->next;
 
-        struct task *node_task = node_completed_task->task;
+        struct task *node_task = temp_completed_task->task;
         while (node_task) {
             struct task *temp_task = node_task;
             node_task = node_task->next;
