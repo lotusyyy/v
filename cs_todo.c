@@ -265,9 +265,7 @@ void command_loop(struct todo_list *todo) {
             while (1) {
                 int found = find_remove_task(todo, buffer);
 
-                if (!found) {
-                    break;
-                }
+                if (!found) break;
             }
         } else if (command == COMMAND_SORT_INCOMPLETE_TASKS) {
             sort(todo);
