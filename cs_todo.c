@@ -494,8 +494,8 @@ int match(char name[MAX_TASK_LENGTH], char pattern[MAX_TASK_LENGTH]) {
             }
 
             strcpy(temp1, name + i);
-            for (int k = j + 1; k < end; k++) {
-                temp2[0] = pattern[k];
+            for (int position = j + 1; position < end; position++) {
+                temp2[0] = pattern[position];
                 strcpy(temp2 + 1, pattern + end + 1);
                 if (match(temp1, temp2)) return 1;
             }
